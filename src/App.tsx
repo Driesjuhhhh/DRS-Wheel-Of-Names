@@ -232,58 +232,62 @@ function App() {
                     <p className="text-slate-400 text-center py-4 text-sm">Using default colors</p>
                 ) : (
                   customColors.map((color, index) => (
-                    <div key={index} className="flex items-center gap-4">
-                      <div className="flex flex-col items-start gap-2">
-                        <label className="text-xs text-slate-500">Background</label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            aria-label={`Background color for segment ${index + 1}`}
-                            type="color"
-                            value={normalizeHex(color.bg) ?? '#000000'}
-                            onChange={(e) => updateColor(index, e.target.value, 'bg', 'picker')}
-                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200"
-                          />
-                          <input
-                            aria-label={`Background hex for segment ${index + 1}`}
-                            type="text"
-                            value={color.bg}
-                            onChange={(e) => updateColor(index, e.target.value, 'bg', 'text')}
-                            onBlur={() => onBlurNormalize(index, 'bg')}
-                            placeholder="#RRGGBB or #RGB"
-                            className="w-32 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm border border-transparent focus:border-slate-300"
-                          />
+                    <div key={index} className="w-full flex flex-col sm:flex-row sm:items-center gap-4 py-2">
+                      <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex flex-col items-start gap-2">
+                          <label className="text-xs text-slate-500">Background</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              aria-label={`Background color for segment ${index + 1}`}
+                              type="color"
+                              value={normalizeHex(color.bg) ?? '#000000'}
+                              onChange={(e) => updateColor(index, e.target.value, 'bg', 'picker')}
+                              className="w-12 h-12 sm:w-12 sm:h-12 rounded-lg cursor-pointer border-2 border-slate-200"
+                            />
+                            <input
+                              aria-label={`Background hex for segment ${index + 1}`}
+                              type="text"
+                              value={color.bg}
+                              onChange={(e) => updateColor(index, e.target.value, 'bg', 'text')}
+                              onBlur={() => onBlurNormalize(index, 'bg')}
+                              placeholder="#RRGGBB or #RGB"
+                              className="w-36 sm:w-40 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm border border-transparent focus:border-slate-300 touch-manipulation"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:ml-6 items-start gap-2">
+                          <label className="text-xs text-slate-500">Text color</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              aria-label={`Text color for segment ${index + 1}`}
+                              type="color"
+                              value={normalizeHex(color.text) ?? '#FFFFFF'}
+                              onChange={(e) => updateColor(index, e.target.value, 'text', 'picker')}
+                              className="w-12 h-12 sm:w-12 sm:h-12 rounded-lg cursor-pointer border-2 border-slate-200"
+                            />
+                            <input
+                              aria-label={`Text hex for segment ${index + 1}`}
+                              type="text"
+                              value={color.text}
+                              onChange={(e) => updateColor(index, e.target.value, 'text', 'text')}
+                              onBlur={() => onBlurNormalize(index, 'text')}
+                              placeholder="#RRGGBB or #RGB"
+                              className="w-36 sm:w-40 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm border border-transparent focus:border-slate-300 touch-manipulation"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-start gap-2">
-                        <label className="text-xs text-slate-500">Text color</label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            aria-label={`Text color for segment ${index + 1}`}
-                            type="color"
-                            value={normalizeHex(color.text) ?? '#FFFFFF'}
-                            onChange={(e) => updateColor(index, e.target.value, 'text', 'picker')}
-                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200"
-                          />
-                          <input
-                            aria-label={`Text hex for segment ${index + 1}`}
-                            type="text"
-                            value={color.text}
-                            onChange={(e) => updateColor(index, e.target.value, 'text', 'text')}
-                            onBlur={() => onBlurNormalize(index, 'text')}
-                            placeholder="#RRGGBB or #RGB"
-                            className="w-32 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm border border-transparent focus:border-slate-300"
-                          />
-                        </div>
+                      <div className="flex items-center sm:items-start">
+                        <button
+                          onClick={() => removeColor(index)}
+                          className="text-red-500 hover:text-red-700 transition-colors mt-2 sm:mt-0"
+                          aria-label={`Remove color ${index + 1}`}
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
-
-                      <button
-                        onClick={() => removeColor(index)}
-                        className="text-red-500 hover:text-red-700 transition-colors"
-                        aria-label={`Remove color ${index + 1}`}
-                      >
-                        <Trash2 size={18} />
-                      </button>
                     </div>
                   ))
                 )}
@@ -313,8 +317,10 @@ function App() {
           )}
 
           <div className={`flex items-center justify-center ${isSpinning ? 'col-span-1' : ''}`}>
-            <div className={`relative transition-all duration-500 ${isSpinning ? 'w-[600px] h-[600px]' : 'w-96 h-96'}`}>
-              <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600 z-20 transition-all duration-500 ${isSpinning ? '-mt-2' : '-mt-2'}`}></div>
+            {/* Responsive wheel container: smaller on phones, medium on tablets, large when spinning on desktop */}
+            <div className={`relative transition-all duration-500 w-64 h-64 sm:w-96 sm:h-96 ${isSpinning ? 'md:w-[600px] md:h-[600px] lg:w-[700px] lg:h-[700px]' : ''}`}>
+              {/* Pointer arrow: scale down on small screens */}
+              <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-8 border-t-red-600 z-20 transition-all duration-500 sm:border-l-[20px] sm:border-r-[20px] sm:border-t-[40px] ${isSpinning ? '-mt-2' : '-mt-2'}`}></div>
 
               <div
                 ref={wheelRef}
@@ -382,7 +388,7 @@ function App() {
                 )}
               </div>
 
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full shadow-lg border-4 border-slate-800 z-10"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full shadow-lg border-4 border-slate-800 z-10"></div>
             </div>
           </div>
         </div>
@@ -404,27 +410,27 @@ function App() {
               </button>
 
               <div className="bg-gradient-to-br from-yellow-400 via-orange-400 to-red-500 p-12 text-center">
-                <div className="text-8xl mb-6 animate-bounce">🎉</div>
-                <h2 className="text-5xl font-bold text-white mb-3">Winner!</h2>
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-2xl py-6 px-8 inline-block">
-                  <p className="text-6xl font-black text-white drop-shadow-lg">{winner}</p>
+                <div className="text-6xl sm:text-8xl mb-4 sm:mb-6 animate-bounce">🎉</div>
+                <h2 className="text-3xl sm:text-5xl font-bold text-white mb-3">Winner!</h2>
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-2xl py-4 px-6 sm:py-6 sm:px-8 inline-block">
+                  <p className="text-3xl sm:text-6xl font-black text-white drop-shadow-lg break-words">{winner}</p>
                 </div>
               </div>
 
-              <div className="p-8 grid grid-cols-2 gap-4">
+              <div className="p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={removeWinnerAndClose}
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 sm:py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl"
                 >
-                  <Trash2 size={20} />
-                  Remove from List
+                  <Trash2 size={18} />
+                  <span className="text-sm sm:text-base">Remove from List</span>
                 </button>
                 <button
                   onClick={spinAgain}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl"
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 sm:py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl"
                 >
-                  <RotateCcw size={20} />
-                  Spin Again
+                  <RotateCcw size={18} />
+                  <span className="text-sm sm:text-base">Spin Again</span>
                 </button>
               </div>
             </div>
