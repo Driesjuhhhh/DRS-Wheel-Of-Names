@@ -1,10 +1,13 @@
 {
+  "homepage": "https://wheelofnames.driesbielen.be",
   "name": "vite-react-typescript-starter",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "perdeploy": "npm run build",
+    "deploy": "npm run build && gh-pages -d dist",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -12,6 +15,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "gh-pages": "^6.3.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
