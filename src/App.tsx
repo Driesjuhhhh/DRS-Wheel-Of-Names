@@ -9,7 +9,7 @@ function App() {
   const [rotation, setRotation] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [customColors, setCustomColors] = useState<string[]>([]);
+  const [customColors, setCustomColors] = useState<{ bg: string; text: string }[]>([]);
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const addName = () => {
@@ -72,21 +72,74 @@ function App() {
   };
 
   const defaultColors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788'
+    { bg: '#C80B0F', text: '#FFFFFF' },
+    { bg: '#0AA9AE', text: '#FFFFFF' },
+    { bg: '#FFFFFF', text: '#000000' },
   ];
 
-  const colors = customColors.length > 0 ? customColors : defaultColors;
+  // For rendering: map to bg color array; fallback to default bg colors
+  const colors = customColors.length > 0 ? customColors.map(c => c.bg) : defaultColors.map(c => c.bg);
 
   const addColor = () => {
-    const newColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    setCustomColors([...customColors, newColor]);
+    const newBg = ('#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')).toUpperCase();
+    // default text color: white or black depending on bg brightness
+    const textDefault = getContrastColor(newBg);
+    setCustomColors([...customColors, { bg: newBg, text: textDefault }]);
   };
 
-  const updateColor = (index: number, color: string) => {
+  // Pick a readable text color (simple luminance check)
+  const getContrastColor = (hex: string) => {
+    const n = normalizeHex(hex) ?? '#000000';
+    const r = parseInt(n.slice(1, 3), 16);
+    const g = parseInt(n.slice(3, 5), 16);
+    const b = parseInt(n.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#000000' : '#FFFFFF';
+  };
+
+  // Normalize shorthand (#FFF) or full (#RRGGBB) hex values to #RRGGBB uppercase.
+  const normalizeHex = (input: string): string | null => {
+    if (!input) return null;
+    let v = input.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    // 3-digit shorthand
+    const shorthand = /^#([0-9a-fA-F]{3})$/;
+    const full = /^#([0-9a-fA-F]{6})$/;
+    const mShort = v.match(shorthand);
+    if (mShort) {
+      const hex = mShort[1].split('').map(c => c + c).join('');
+      return ('#' + hex).toUpperCase();
+    }
+    const mFull = v.match(full);
+    if (mFull) {
+      return ('#' + mFull[1]).toUpperCase();
+    }
+    return null;
+  };
+
+  // Update color values for bg or text. source indicates which field: 'bg' or 'text'
+  const updateColor = (index: number, value: string, field: 'bg' | 'text', source: 'text' | 'picker' = 'text') => {
     const newColors = [...customColors];
-    newColors[index] = color;
+    const current = newColors[index] ?? { bg: '#000000', text: '#FFFFFF' };
+    if (field === 'bg') {
+      const normalized = source === 'picker' ? value.toUpperCase() : normalizeHex(value) ?? value.toUpperCase();
+      newColors[index] = { ...current, bg: normalized };
+    } else {
+      const normalized = normalizeHex(value) ?? value.toUpperCase();
+      newColors[index] = { ...current, text: normalized };
+    }
     setCustomColors(newColors);
+  };
+
+  const onBlurNormalize = (index: number, field: 'bg' | 'text') => {
+    const col = customColors[index];
+    if (!col) return;
+    const normalized = normalizeHex(field === 'bg' ? col.bg : col.text);
+    if (normalized) {
+      const newColors = [...customColors];
+      newColors[index] = { ...newColors[index], [field]: normalized } as { bg: string; text: string };
+      setCustomColors(newColors);
+    }
   };
 
   const removeColor = (index: number) => {
@@ -98,17 +151,19 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-5xl font-bold text-center mb-2 text-white">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-8 px-4">
+      <div className="max-w-6xl mx-auto flex-1">
+  <h1 className="text-5xl font-bold text-center mb-8 text-white">
           Wheel of Names
         </h1>
-        <p className="text-center text-slate-300 mb-12">Add names and spin the wheel!</p>
+        {!isSpinning && (
+          <p className="text-center text-slate-300 mb-12">Add names and spin the wheel!</p>
+        )}
 
         <div className={`grid gap-8 ${isSpinning ? 'lg:grid-cols-1' : 'lg:grid-cols-2'} transition-all`}>
           {!isSpinning && (
             <div className="bg-white rounded-2xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold mb-6 text-slate-800">Add Names</h2>
+            <h2 className="text-2xl font-semibold mb-6 opacity-80 text-slate-800">Add Names</h2>
 
             <div className="flex gap-2 mb-6">
               <input
@@ -175,27 +230,63 @@ function App() {
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
                   {customColors.length === 0 ? (
                     <p className="text-slate-400 text-center py-4 text-sm">Using default colors</p>
-                  ) : (
-                    customColors.map((color, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={color}
-                          onChange={(e) => updateColor(index, e.target.value)}
-                          className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200"
-                        />
-                        <div className="flex-1 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm">
-                          {color.toUpperCase()}
+                ) : (
+                  customColors.map((color, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="flex flex-col items-start gap-2">
+                        <label className="text-xs text-slate-500">Background</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            aria-label={`Background color for segment ${index + 1}`}
+                            type="color"
+                            value={normalizeHex(color.bg) ?? '#000000'}
+                            onChange={(e) => updateColor(index, e.target.value, 'bg', 'picker')}
+                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200"
+                          />
+                          <input
+                            aria-label={`Background hex for segment ${index + 1}`}
+                            type="text"
+                            value={color.bg}
+                            onChange={(e) => updateColor(index, e.target.value, 'bg', 'text')}
+                            onBlur={() => onBlurNormalize(index, 'bg')}
+                            placeholder="#RRGGBB or #RGB"
+                            className="w-32 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm border border-transparent focus:border-slate-300"
+                          />
                         </div>
-                        <button
-                          onClick={() => removeColor(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
                       </div>
-                    ))
-                  )}
+
+                      <div className="flex flex-col items-start gap-2">
+                        <label className="text-xs text-slate-500">Text color</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            aria-label={`Text color for segment ${index + 1}`}
+                            type="color"
+                            value={normalizeHex(color.text) ?? '#FFFFFF'}
+                            onChange={(e) => updateColor(index, e.target.value, 'text', 'picker')}
+                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-slate-200"
+                          />
+                          <input
+                            aria-label={`Text hex for segment ${index + 1}`}
+                            type="text"
+                            value={color.text}
+                            onChange={(e) => updateColor(index, e.target.value, 'text', 'text')}
+                            onBlur={() => onBlurNormalize(index, 'text')}
+                            placeholder="#RRGGBB or #RGB"
+                            className="w-32 bg-slate-50 px-3 py-2 rounded-lg font-mono text-sm border border-transparent focus:border-slate-300"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => removeColor(index)}
+                        className="text-red-500 hover:text-red-700 transition-colors"
+                        aria-label={`Remove color ${index + 1}`}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
+                )}
                 </div>
 
                 <div className="flex gap-2">
@@ -235,7 +326,7 @@ function App() {
               >
                 {names.length === 0 ? (
                   <div className="w-full h-full bg-slate-300 flex items-center justify-center">
-                    <p className="text-slate-500 font-semibold">Add names</p>
+
                   </div>
                 ) : (
                   <>
@@ -267,18 +358,22 @@ function App() {
                               stroke="white"
                               strokeWidth="0.5"
                             />
-                            <text
-                              x={textX}
-                              y={textY}
-                              fill="white"
-                              fontSize="4"
-                              fontWeight="bold"
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              transform={`rotate(${startAngle + segmentAngle / 2 + 90}, ${textX}, ${textY})`}
-                            >
-                              {name}
-                            </text>
+                                <text
+                                  x={textX}
+                                  y={textY}
+                                  fill={
+                                    (customColors[index] && customColors[index].text)
+                                      ? (normalizeHex(customColors[index].text) ?? '#FFFFFF')
+                                      : (defaultColors[index % defaultColors.length].text ?? '#FFFFFF')
+                                  }
+                                  fontSize="4"
+                                  fontWeight="bold"
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                  transform={`rotate(${startAngle + segmentAngle / 2 + 90}, ${textX}, ${textY})`}
+                                >
+                                  {name}
+                                </text>
                           </g>
                         );
                       })}
@@ -292,6 +387,10 @@ function App() {
           </div>
         </div>
       </div>
+
+      <footer className="mt-8 text-center text-slate-400 text-sm">
+        <a href="https://www.driesbielen.be" target="_blank" rel="noreferrer" className="text-slate-200 hover:underline">Created by Dries Bielen</a>
+      </footer>
 
       {showModal && winner && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fadeIn">
