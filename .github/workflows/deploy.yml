@@ -21,8 +21,8 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -38,7 +38,7 @@ jobs:
             cp public/CNAME dist/CNAME
           fi
 
-      - name: Debug list `dist` contents
+      - name: 'Debug: list dist contents'
         run: |
           echo "dist absolute: $(pwd)/dist"
           ls -la dist || true
