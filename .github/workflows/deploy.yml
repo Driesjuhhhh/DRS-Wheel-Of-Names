@@ -38,7 +38,7 @@ jobs:
             cp public/CNAME dist/CNAME
           fi
 
-      - name: Debug: list `dist` contents
+      - name: Debug list `dist` contents
         run: |
           echo "dist absolute: $(pwd)/dist"
           ls -la dist || true
