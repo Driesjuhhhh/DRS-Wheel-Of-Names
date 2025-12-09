@@ -20,8 +20,11 @@ else
 fi
 npm run build
 
-# 2. copy CNAME if present
-if [ -f public/CNAME ]; then
+# 2. copy CNAME if present (check repo root first, then public/)
+if [ -f CNAME ]; then
+  echo "Copying CNAME -> dist/CNAME"
+  cp CNAME dist/CNAME
+elif [ -f public/CNAME ]; then
   echo "Copying public/CNAME -> dist/CNAME"
   cp public/CNAME dist/CNAME
 fi

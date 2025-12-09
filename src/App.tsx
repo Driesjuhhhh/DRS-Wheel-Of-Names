@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, Play, X, RotateCcw, Palette } from 'lucide-react';
 
 function App() {
@@ -11,6 +11,59 @@ function App() {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [customColors, setCustomColors] = useState<{ bg: string; text: string }[]>([]);
   const wheelRef = useRef<HTMLDivElement>(null);
+
+  // LocalStorage: save/load multiple named lists
+  const STORAGE_KEY = 'wonames_saved_lists';
+  const [saveTitle, setSaveTitle] = useState('');
+  const [savedLists, setSavedLists] = useState<Record<string, string[]>>({});
+
+  const loadSavedLists = (): Record<string, string[]> => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.error('Failed to parse saved lists from localStorage', e);
+      return {};
+    }
+  };
+
+  const saveListsToStorage = (lists: Record<string, string[]>) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
+      setSavedLists(lists);
+    } catch (e) {
+      console.error('Failed to save lists to localStorage', e);
+    }
+  };
+
+  useEffect(() => {
+    setSavedLists(loadSavedLists());
+  }, []);
+
+  const saveCurrentList = (title: string) => {
+    const t = title.trim();
+    if (!t) return;
+    const lists = loadSavedLists();
+    lists[t] = names.slice();
+    saveListsToStorage(lists);
+    setSaveTitle('');
+  };
+
+  const loadList = (title: string) => {
+    const lists = loadSavedLists();
+    const arr = lists[title];
+    if (arr && Array.isArray(arr)) {
+      setNames(arr.slice());
+    }
+  };
+
+  const deleteSavedList = (title: string) => {
+    const lists = loadSavedLists();
+    if (lists[title]) {
+      delete lists[title];
+      saveListsToStorage(lists);
+    }
+  };
 
   const addName = () => {
     if (inputName.trim() && !names.includes(inputName.trim())) {
@@ -37,9 +90,29 @@ function App() {
     setRotation(totalRotation);
 
     setTimeout(() => {
-      const normalizedRotation = totalRotation % 360;
+      const normalizedRotation = ((totalRotation % 360) + 360) % 360; // 0..360
       const segmentAngle = 360 / names.length;
-      const winningIndex = Math.floor((360 - normalizedRotation + segmentAngle / 2) / segmentAngle) % names.length;
+
+      // Pointer is at the top (angle = -90 degrees in wheel coordinates).
+      const pointerAngle = -90;
+
+      const norm = (a: number) => ((a % 360) + 360) % 360;
+
+      let winningIndex = 0;
+      for (let i = 0; i < names.length; i++) {
+        const startAngle = i * segmentAngle - 90;
+        const endAngle = startAngle + segmentAngle;
+
+        const startRot = norm(startAngle + normalizedRotation);
+        const endRot = norm(endAngle + normalizedRotation);
+        const p = norm(pointerAngle);
+
+        const contains = startRot < endRot ? (p >= startRot && p < endRot) : (p >= startRot || p < endRot);
+        if (contains) {
+          winningIndex = i;
+          break;
+        }
+      }
 
       setWinner(names[winningIndex]);
       setIsSpinning(false);
@@ -72,9 +145,14 @@ function App() {
   };
 
   const defaultColors = [
-    { bg: '#C80B0F', text: '#FFFFFF' },
-    { bg: '#0AA9AE', text: '#FFFFFF' },
-    { bg: '#FFFFFF', text: '#000000' },
+    { bg: '#FF0066', text: '#FFFFFF' },
+    { bg: '#00F5D4', text: '#000000' },
+    { bg: '#7C4DFF', text: '#FFFFFF' },
+    { bg: '#00B4FF', text: '#000000' },
+    { bg: '#FFDD00', text: '#000000' },
+    { bg: '#FF6EC7', text: '#000000' },
+    { bg: '#00FFA3', text: '#000000' },
+    { bg: '#8A2BE2', text: '#FFFFFF' },
   ];
 
   // For rendering: map to bg color array; fallback to default bg colors
@@ -151,19 +229,19 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-8 px-4">
+    <div className="min-h-screen flex flex-col bg-[radial-gradient(ellipse_at_top_right,#020617_0%,#08102a_40%,#020617_100%)] py-8 px-4 text-slate-100">
       <div className="max-w-6xl mx-auto flex-1">
-  <h1 className="text-5xl font-bold text-center mb-8 text-white">
+  <h1 className="text-5xl sm:text-6xl font-extrabold text-center mb-6 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-violet-400 to-cyan-300 drop-shadow-lg">
           Wheel of Names
         </h1>
         {!isSpinning && (
-          <p className="text-center text-slate-300 mb-12">Add names and spin the wheel!</p>
+          <p className="text-center text-slate-300/80 mb-8">Add names and spin the neon wheel</p>
         )}
 
         <div className={`grid gap-8 ${isSpinning ? 'lg:grid-cols-1' : 'lg:grid-cols-2'} transition-all`}>
           {!isSpinning && (
-            <div className="bg-white rounded-2xl shadow-2xl p-8">
-            <h2 className="text-2xl font-semibold mb-6 opacity-80 text-slate-800">Add Names</h2>
+            <div className="bg-[rgba(255,255,255,0.03)] border border-slate-700/40 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(120,40,200,0.06)] p-6">
+            <h2 className="text-2xl font-semibold mb-4 opacity-90 text-pink-300">Add Names</h2>
 
             <div className="flex gap-2 mb-6">
               <input
@@ -172,11 +250,11 @@ function App() {
                 onChange={(e) => setInputName(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter a name..."
-                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                className="flex-1 px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.03)] border border-slate-700/40 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all"
               />
               <button
                 onClick={addName}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-colors shadow-lg hover:shadow-xl"
+                className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-[0_6px_20px_rgba(168,85,247,0.25)]"
               >
                 <Plus size={20} />
                 Add
@@ -190,12 +268,12 @@ function App() {
                 names.map((name, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-slate-50 px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors"
+                    className="flex items-center justify-between bg-[rgba(255,255,255,0.02)] px-4 py-3 rounded-lg hover:bg-[rgba(255,255,255,0.04)] transition-colors border border-slate-700/30"
                   >
-                    <span className="font-medium text-slate-700">{name}</span>
+                    <span className="font-medium text-slate-100">{name}</span>
                     <button
                       onClick={() => removeName(index)}
-                      className="text-red-500 hover:text-red-700 transition-colors"
+                      className="text-pink-400 hover:text-pink-200 transition-colors"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -208,15 +286,15 @@ function App() {
               <button
                 onClick={spinWheel}
                 disabled={names.length === 0 || isSpinning}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-slate-300 disabled:to-slate-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-cyan-400 to-pink-500 hover:from-cyan-300 hover:to-pink-600 disabled:from-slate-800 disabled:to-slate-700 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-[0_10px_30px_rgba(99,102,241,0.12)] disabled:cursor-not-allowed"
               >
                 <Play size={24} />
-                {isSpinning ? 'Spinning...' : 'Spin the Wheel!'}
+                {isSpinning ? 'Spinning...' : 'Spin the Neon Wheel'}
               </button>
 
               <button
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl"
+                className="w-full bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.04)] text-pink-300 font-semibold py-3 rounded-xl flex items-center justify-center gap-3 transition-all shadow-inner"
               >
                 <Palette size={20} />
                 Customize Colors
@@ -224,8 +302,8 @@ function App() {
             </div>
 
             {showColorPicker && (
-              <div className="mt-6 pt-6 border-t border-slate-200">
-                <h3 className="text-lg font-semibold mb-4 text-slate-800">Wheel Colors</h3>
+              <div className="mt-6 pt-6 border-t border-slate-700/30">
+                <h3 className="text-lg font-semibold mb-4 text-pink-300">Wheel Colors</h3>
 
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
                   {customColors.length === 0 ? (
@@ -242,7 +320,7 @@ function App() {
                               type="color"
                               value={normalizeHex(color.bg) ?? '#000000'}
                               onChange={(e) => updateColor(index, e.target.value, 'bg', 'picker')}
-                              className="w-12 h-12 sm:w-12 sm:h-12 rounded-lg cursor-pointer border-2 border-slate-200"
+                              className="w-12 h-12 sm:w-12 sm:h-12 rounded-lg cursor-pointer border border-slate-600 shadow-[0_6px_18px_rgba(168,85,247,0.12)]"
                             />
                             <input
                               aria-label={`Background hex for segment ${index + 1}`}
@@ -264,7 +342,7 @@ function App() {
                               type="color"
                               value={normalizeHex(color.text) ?? '#FFFFFF'}
                               onChange={(e) => updateColor(index, e.target.value, 'text', 'picker')}
-                              className="w-12 h-12 sm:w-12 sm:h-12 rounded-lg cursor-pointer border-2 border-slate-200"
+                              className="w-12 h-12 sm:w-12 sm:h-12 rounded-lg cursor-pointer border border-slate-600 shadow-[0_6px_18px_rgba(99,102,241,0.08)]"
                             />
                             <input
                               aria-label={`Text hex for segment ${index + 1}`}
@@ -296,7 +374,7 @@ function App() {
                 <div className="flex gap-2">
                   <button
                     onClick={addColor}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-medium"
+                    className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-[0_8px_24px_rgba(168,85,247,0.18)] text-sm font-medium"
                   >
                     <Plus size={18} />
                     Add Color
@@ -304,7 +382,7 @@ function App() {
                   {customColors.length > 0 && (
                     <button
                       onClick={resetColors}
-                      className="bg-slate-500 hover:bg-slate-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium"
+                      className="bg-slate-700/40 hover:bg-slate-700/60 text-slate-200 py-2 px-4 rounded-lg transition-colors text-sm font-medium"
                     >
                       Reset
                     </button>
@@ -312,7 +390,46 @@ function App() {
                 </div>
               </div>
             )}
+            
 
+            <div className="mt-6 pt-6 border-t border-slate-700/30">
+              <h3 className="text-lg font-semibold mb-3 text-pink-300">Saved Lists</h3>
+
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={saveTitle}
+                  onChange={(e) => setSaveTitle(e.target.value)}
+                  placeholder="List title..."
+                  className="flex-1 px-3 py-2 rounded-xl bg-[rgba(255,255,255,0.03)] border border-slate-700/40 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all"
+                />
+                <button
+                  onClick={() => saveCurrentList(saveTitle)}
+                  className="bg-gradient-to-r from-cyan-400 to-pink-500 hover:from-cyan-300 hover:to-pink-600 text-white px-4 py-2 rounded-xl transition-all shadow-[0_8px_24px_rgba(99,102,241,0.12)]"
+                >
+                  Save
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {Object.keys(savedLists).length === 0 ? (
+                  <p className="text-slate-400 text-sm">No saved lists yet</p>
+                ) : (
+                  Object.keys(savedLists).map((title) => (
+                    <div key={title} className="flex items-center justify-between bg-[rgba(255,255,255,0.02)] px-4 py-2 rounded-lg border border-slate-700/30">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-slate-100">{title}</span>
+                        <span className="text-slate-400 text-sm">({savedLists[title]?.length ?? 0})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => loadList(title)} className="text-cyan-300 hover:text-cyan-100">Load</button>
+                        <button onClick={() => deleteSavedList(title)} className="text-pink-400 hover:text-pink-200">Delete</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
           )}
 
@@ -337,6 +454,19 @@ function App() {
                 ) : (
                   <>
                     <svg className="w-full h-full" viewBox="0 0 100 100">
+                      <defs>
+                        <filter id="neon" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                        <linearGradient id="wheelCenter" x1="0" x2="1">
+                          <stop offset="0%" stopColor="#0f172a" />
+                          <stop offset="100%" stopColor="#020617" />
+                        </linearGradient>
+                      </defs>
                       {names.map((name, index) => {
                         const segmentAngle = 360 / names.length;
                         const startAngle = index * segmentAngle - 90;
@@ -361,8 +491,9 @@ function App() {
                             <path
                               d={`M 50 50 L ${x1} ${y1} A 50 50 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
                               fill={colors[index % colors.length]}
-                              stroke="white"
-                              strokeWidth="0.5"
+                              stroke="rgba(255,255,255,0.08)"
+                              strokeWidth="0.4"
+                              filter="url(#neon)"
                             />
                                 <text
                                   x={textX}
@@ -372,11 +503,15 @@ function App() {
                                       ? (normalizeHex(customColors[index].text) ?? '#FFFFFF')
                                       : (defaultColors[index % defaultColors.length].text ?? '#FFFFFF')
                                   }
+                                  stroke="rgba(0,0,0,0.45)"
+                                  strokeWidth="0.25"
+                                  paintOrder="stroke"
                                   fontSize="4"
-                                  fontWeight="bold"
+                                  fontWeight="700"
                                   textAnchor="middle"
                                   dominantBaseline="middle"
                                   transform={`rotate(${startAngle + segmentAngle / 2 + 90}, ${textX}, ${textY})`}
+                                  filter="url(#neon)"
                                 >
                                   {name}
                                 </text>
